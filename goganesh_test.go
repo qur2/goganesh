@@ -54,22 +54,33 @@ func TestSearchByTitle(t *testing.T) {
 }
 
 func TestRankUp(t *testing.T) {
+	scores := []float64{9, 5, 3, 1, .1}
 	it1 := &Item{9, "Banana"}
-	it2 := &Item{8, "Lemon"}
-	it3 := &Item{4, "Kiwi"}
-	it4 := &Item{2, "Peach"}
-	it5 := &Item{2, "Apple"}
-	items := []*Item{ it1, it2, it3, it4, it5 }
-	rankUp(items, 0)
-	if items[0] != it1 {
-		t.Errorf("Wrong item #0: %s", items[0])
+	it2 := &Item{5, "Lemon"}
+	it3 := &Item{3, "Kiwi"}
+	it4 := &Item{1, "Peach"}
+	it5 := &Item{0.1, "Apple"}
+	items := []*Item{it1, it2, it3, it4, it5}
+	for i := 0; i < 5; i++ {
+		rankUp(items, i)
+		if items[i].Score <= scores[i] {
+			t.Errorf("Score of item #%d decreased: %.6f", i, items[i].Score)
+		}
 	}
-	rankUp(items, 4)
-	if items[3] != it5 {
-		t.Errorf("Wrong item #3: %s", items[3])
-	}
-	rankUp(items, 3)
-	if items[2] != it5 {
-		t.Errorf("Wrong item #2: %s", items[2])
+}
+
+func TestDecay(t *testing.T) {
+	scores := []float64{9, 5, 3, 1, .1}
+	it1 := &Item{9, "Banana"}
+	it2 := &Item{5, "Lemon"}
+	it3 := &Item{3, "Kiwi"}
+	it4 := &Item{1, "Peach"}
+	it5 := &Item{0.1, "Apple"}
+	items := []*Item{it1, it2, it3, it4, it5}
+	decay(items)
+	for i := 0; i < 5; i++ {
+		if items[i].Score >= scores[i] {
+			t.Errorf("Score of item #%d increased: %.6f", i, items[i].Score)
+		}
 	}
 }

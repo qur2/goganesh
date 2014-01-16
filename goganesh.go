@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -26,18 +27,27 @@ func main() {
 }
 
 type Item struct {
-	Score int
+	Score float64
 	Title string
 }
 
 func (it *Item) String() string {
-	return fmt.Sprintf("%d:%s", it.Score, it.Title)
+	return fmt.Sprintf("%.6f:%s", it.Score, it.Title)
+}
+
+// Some inspiration found there: http://math.stackexchange.com/questions/57429/functions-similar-to-log-but-with-results-between-0-and-1
+func Grow(score float64) float64 {
+	newScore := score + (math.Exp(-score/12 + 1))
+	return newScore
+}
+func Shrink(score float64) float64 {
+	return score * .86
 }
 
 // Transforms a stringified item to an actual Item instance.
 func Itemify(s string) (*Item, error) {
 	bits := append(strings.SplitN(s, ":", 2), "")
-	p, err := strconv.Atoi(bits[0])
+	p, err := strconv.ParseFloat(bits[0], 64)
 	return &Item{p, bits[1]}, err
 }
 
@@ -53,16 +63,22 @@ func searchByTitle(items []*Item, needle string) (pos int) {
 	return
 }
 
+func decay(items []*Item) {
+	for _, it := range items {
+		it.Score = Shrink(it.Score)
+	}
+}
+
 // Update the rank of the item at the specified position and move it up
 // to its correct position.
-func rankUp(items []*Item, itemPos int) {
-	items[itemPos].Score++
-	for i := itemPos - 1; i >= 0; i-- {
-		if items[i].Score > items[itemPos].Score {
+func rankUp(items []*Item, k int) {
+	items[k].Score = Grow(items[k].Score)
+	for i := k - 1; i >= 0; i-- {
+		if items[i].Score > items[k].Score {
 			break
 		} else {
 			items[i], items[i+1] = items[i+1], items[i]
-			itemPos--
+			k--
 		}
 	}
 }
@@ -84,14 +100,16 @@ func updateRanking(file string, capacity int, title string) {
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
-	itemPos := searchByTitle(items, title)
-	// If the item was not found, set it at the end with a null score.
+	k := searchByTitle(items, title)
+	decay(items[:k])
+	decay(items[k+1:])
+	// If the item was not found, set it at the end with a very low score.
 	// Doing so will allow it to go up the lowest scored items.
-	if itemPos == -1 {
-		itemPos = len(items)
-		items = append(items, &Item{0, title})
+	if k == -1 {
+		k = len(items)
+		items = append(items, &Item{0.05, title})
 	}
-	rankUp(items, itemPos)
+	rankUp(items, k)
 	if err := writeLines(items, file); err != nil {
 		log.Fatalf("writeLines: %s", err)
 	}
